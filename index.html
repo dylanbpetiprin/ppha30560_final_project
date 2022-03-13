@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        .chart-container {
+            max-width: 1050px;
+            margin: 0 auto;
+            /* auto centers the div */
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+        }
+
+        .pop-up {
+            position: absolute;
+            border: 1px solid black;
+            border-radius: 1px;
+            line-height: 1.2;
+            width: 200px;
+            pointer-events: none;
+            background-color: white;
+            padding: 10px;
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+        }
+
+        h1 {
+            border: 2px;
+            text-align:center;
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+        }
+
+        h2 {
+            text-align:center;
+            border: 2px solid;
+            width: 80%;
+            margin: 0 auto;
+            font-size: 24px;
+            font-weight: normal;
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+        }
+
+        h3 {
+            text-align: center;
+            font-size:18px;
+            color:lightslategrey;
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+        }
+
+        .source {
+            max-width: 710px;
+            margin: 0 auto;
+            font-size: 13px;
+            line-height: 17px;
+            font-weight: 500;
+            font-family: "nyt-franklin", arial, helvetica, sans-serif;
+            color: #999999;
+        }
+
+
+
+    </style>
+
+</head>
+
+<body>
+    <div class="chart-container">
+        <h1>
+            Regional COVID Differences Persist in Kentucky
+        </h1>
+
+        <h3>
+            February saw precipitous shifts in COVID-19 cases as the Omicron variant ravaged America. The graphs below look specifically at the regional differences between 
+            <span style="color:#e66101">Eastern Kentucky</span> and <span style="color:#5e3c99">Western Kentucky</span> during the pandemic.
+        </h3>
+
+        <br>
+        <br>
+        <br>
+        <br>
+
+
+        <h2>
+           Mouse over the map to explore Kentucky COVID-19 rates from February 2022.
+        </h2>
+        <br>
+        <br>
+
+
+        <svg width="1050px" height="500px">
+
+        </svg>
+
+        <h3>
+            <span style="color:#e66101">Eastern Kentucky</span> clearly experienced higher February rates than <span style="color:#5e3c99">Western Kentucky</span>. But was this generally true? 
+        </h3>
+        <br>
+        <br>
+        <br>
+        <br>
+
+        <h2> See the graph below for a comprehensive regional comparison.</h2>
+        <br>
+        <br>
+
+        <img src="ky_graph_big-01.svg" width="1000px" height="750px">
+
+        <br>
+
+        <div class='source'> Source: <a href="https://github.com/nytimes/covid-19-data">The New York Times</a> </div>
+
+        <div class="pop-up">
+        </div>
+    </div>
+</body>
+
+
+<!-- we're using d3 version 6 (the latest version) for all out work -->
+<script src="https://d3js.org/d3.v6.min.js"></script>
+
+<!-- load topojson script -->
+<script src="https://unpkg.com/topojson@3"></script>
+
+<script>
+    // //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+    Promise.all([ //waits for all the data to load, then when loaded will return it all in one array called res
+        d3.json('usa_counties_topo.json'),
+    ])
+        .then(ready)
+        .catch((err) => {
+            console.log(err);
+        });
+
+    function ready(res) {
+        let raw = res[0]
+
+        let county = topojson.feature(raw, raw.objects.county);
+
+        let width = 1050;
+        let height = 450;
+
+        let popup = d3.select(".pop-up");
+
+        let western = ['Adair', 'Allen', 'Ballard', 'Barren', 'Breckinridge', 'Bullitt', 'Butler',
+             'Caldwell', 'Calloway', 'Carlisle', 'Casey', 'Christian', 'Clinton', 'Crittenden', 
+             'Cumberland', 'Daviess', 'Edmonson', 'Fulton', 'Graves', 'Grayson', 'Green', 'Hancock', 
+             'Hardin', 'Hart', 'Henderson', 'Hickman', 'Hopkins', 'Jefferson', 'Larue', 'Livingston', 'Logan', 
+             'Lyon', 'McCracken', 'McLean', 'Marion', 'Marshall', 'Meade', 'Metcalfe', 'Monroe', 'Muhlenberg', 
+             'Nelson', 'Ohio', 'Oldham', 'Russell', 'Simpson', 'Spencer', 'Taylor', 'Todd', 
+             'Trigg', 'Union', 'Warren', 'Washington', 'Webster']
+
+
+        let eastern = ['Anderson', 'Bath', 'Bell', 'Boone', 'Bourbon', 'Boyd', 'Boyle', 
+             'Bracken', 'Breathitt', 'Campbell', 'Carroll', 'Carter', 'Clark', 'Clay',
+             'Elliott', 'Estill', 'Fayette', 'Fleming', 'Floyd', 'Franklin', 'Gallatin',
+             'Garrard', 'Grant', 'Greenup', 'Harlan', 'Harrison', 'Henry', 'Jackson', 
+             'Jessamine', 'Johnson', 'Kenton', 'Knott', 'Knox', 'Laurel', 'Lawrence', 
+             'Lee', 'Leslie', 'Letcher', 'Lewis', 'Lincoln', 'McCreary', 'Madison', 
+             'Magoffin', 'Martin', 'Mason', 'Menifee', 'Mercer', 'Montgomery', 'Morgan', 
+             'Nicholas', 'Owen', 'Owsley', 'Pendleton', 'Perry', 'Pike', 'Powell', 
+             'Pulaski', 'Robertson', 'Rockcastle', 'Rowan', 'Scott', 'Shelby', 'Trimble', 
+             'Wayne', 'Whitley', 'Wolfe', 'Woodford']
+
+        let svg = d3.select("body").select("svg")
+    
+        let colorscale = d3.scaleThreshold()
+            .domain([43.7, 88.7, 113.4, 136.8, 291.1])
+            //.range(['#e66101', '#fdb863', '#b2abd2', '#5e3c99'])
+            .range(['#f1eef6', '#d7b5d8', '#df65b0', '#ce1256'])
+
+        let size = 20
+
+        let cov_colors = ['#f1eef6', '#d7b5d8', '#df65b0', '#ce1256']
+        let cov_squares = ["43.7 - 88.7", "88.8 - 113.4", "113.5 - 136.8", "136.9 - 291.1"]
+        let cov_legend_color = d3.scaleOrdinal()
+            .domain(cov_squares)
+            .range(cov_colors)
+
+        let reg_colors = ['#e66101', '#5e3c99']
+        let reg_squares = ['Eastern KY', 'Western KY']
+        let reg_legend_color = d3.scaleOrdinal()
+            .domain(reg_squares)
+            .range(reg_colors)
+
+        svg.selectAll("mysquares")
+        .data(cov_squares)
+        .enter()
+        .append("rect")
+            .attr("x", 10)
+            .attr("y", function(d,i){ return 100 + i*(size + 5)})
+            .attr("width", size)
+            .attr("height", size)
+            .style("fill", function(d){ return cov_legend_color(d)})
+            .style('stroke', 'black')
+
+        svg.selectAll("mylabels")
+            .data(cov_squares)
+            .enter()
+            .append("text")
+                .attr("class", "legend-label")
+                .attr("x", 10 + size*1.2 )
+                .attr("y", function(d,i){ return 100 + i*(size + 5) + (size/2)})
+                .text(function(d){ return d})
+                .attr("text-anchor", "left")
+                .style("alignment-baseline", "middle")
+        svg
+            .append('text')
+                .attr("class", "legend-label")
+                .attr("x", 10)
+                .attr("y", 85)
+                .text("Cases")  
+                .attr("text-anchor", "left")
+                .style("alignment-baseline", "middle")
+
+        svg.selectAll("mysquares")
+            .data(reg_squares)
+            .enter()
+            .append("rect")
+                .attr("x", 160)
+                .attr("y", function(d,i){ return 100 + i*(size + 5)})
+                .attr("width", size)
+                .attr("height", size)
+                .style("fill", function(d){ return reg_legend_color(d)})
+                .style('stroke', 'black')
+
+        svg.selectAll("mylabels")
+            .data(reg_squares)
+            .enter()
+            .append("text")
+                .attr("class", "legend-label")
+                .attr("x", 160 + size*1.2 )
+                .attr("y", function(d,i){ return 100 + i*(size + 5) + (size/2)})
+                .text(function(d){ return d})
+                .attr("text-anchor", "left")
+                .style("alignment-baseline", "middle")
+        svg
+            .append('text')
+                .attr("class", "legend-label")
+                .attr("x", 160)
+                .attr("y", 85)
+                .text("Region")  
+                .attr("text-anchor", "left")
+                .style("alignment-baseline", "middle")
+
+
+     
+
+        let myProjection = d3.geoMercator()
+            .fitSize([width, height], county)
+            
+
+        let path = d3.geoPath()
+            .projection(myProjection)
+            console.log(path)
+
+
+        let counties = svg.append("g")
+            .selectAll(".counties")
+            .data(county.features) 
+            .join("path")
+            .attr("d", path)
+            .style("fill", function (d) {
+                    d.total = d.properties.feb_case_avg;
+                    return colorscale(d.total);
+                })
+            .attr("class", function (d) { return "c-" + d.properties.GEOID})
+            .style("stroke", "black")
+            .style("stroke-width", .4)
+
+            console.log({counties})
+
+
+        counties.on("mouseover", (event, d) => {
+            counties
+                .style("stroke", "black")
+                .style("fill", function (d) {
+                    d.total = d.properties.feb_case_avg;
+                    return colorscale(d.total);
+                })
+                .style("stroke-width", .4)
+
+            svg.select("path.c-" + d.properties.GEOID)
+                .style("stroke", "black")
+                .style("stroke-width", 2)
+                .style("fill", 
+                function (d) {            
+                    if (western.includes(d.properties.county)) {
+                        return '#5e3c99'
+                    } else if (eastern.includes(d.properties.county)){
+                        return '#e66101'
+                    } else {
+                        return '#eee'
+                    }})
+                .style("fill-opacity", 1)
+                .raise()
+
+            let name = d.properties.county + " County " 
+            let countyname = d.properties.county
+            let countycolor = function(d) {
+                if (western.includes(countyname)) {
+                        return '#5e3c99'
+                    } else {
+                        return '#e66101'
+                    }}
+            let lang = name.bold().fontcolor(countycolor()) + "had a weekly average of " + d3.format(".1f")(d.properties.feb_case_avg).bold().fontcolor(countycolor()) + " cases per one hundred thousand people."
+
+            popup
+                .style("left", (event.x - 100) + "px")
+                .style("top", (event.y-50) + "px")
+                .html(lang)
+        })
+    }
+
+
+
+
+
+
+</script>
